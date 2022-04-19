@@ -1,0 +1,170 @@
+##############################################
+############	BOX		###############
+###############################################
+units lj
+atom_style angle #with stiffness
+boundary        p p p
+
+neighbor 1.6 bin
+neigh_modify every 2 delay 2 check yes
+
+#include parameters.dat
+#changed from include to read_data, file name is temporary to avoid previous PATH issues
+
+
+variable Rmin  equal 1.12246152962189
+variable bfreq equal 1
+variable bprob equal 1
+
+###############################################
+############	FILES		###############
+###############################################
+
+###IMPORTANT FOR LIGATION!!
+#The start configuration is made of linear chains whose ends are type 2
+variable polymers equal 100
+variable box equal 30   
+variable length equal 50
+variable type equal 5
+variable restartname index ../EQUIL/melt.l${box}n${polymers}m${length}t${type}.equilibrated.data 
+variable simname index melt.linear
+
+variable fname index dump
+shell mkdir ${fname}.l${box}n${polymers}m${length}t${type}
+shell mkdir ${fname}.trajectories
+restart 1000 ${fname}.l${box}n${polymers}m${length}t${type}/Restart.${simname}
+
+###IMPORTANT FOR LIGATION!!
+read_data INIT/melt.ring.l${box}n${polymers}m${length}t${type}.0 extra/bond/per/atom 3 extra/angle/per/atom 6 extra/special/per/atom 6
+
+reset_timestep 0
+
+###############################################
+############	ANGLE		###############
+###############################################
+angle_style   cosine
+angle_coeff  1 5.0 #20 for realistic DNA (1 bead = 2.5 nm)
+
+####################################
+####    PAIR INTERACTIONS    #######
+####################################
+pair_style  soft 1.12246
+pair_coeff      * * 100.0 1.12246
+
+####################################
+####    BONDS                #######
+####################################
+bond_style harmonic
+bond_coeff 1 200.0 1.1
+
+
+###############################################
+############    DUMP        ###############
+###############################################
+####DUMP DAT
+dump   1   all   custom   100000   ${fname}.l${box}n${polymers}m${length}t${type}/${simname}.*  id mol type x y z  ix iy iz
+dump_modify 1 sort id
+####DUMP VMD
+dump 2 all custom 100000 ${fname}.trajectories/${simname}.l${box}n${polymers}m${length}t${type}.lammpstrj id mol type x y z ix iy iz
+
+## DUMP bonds
+#compute bonds all property/local btype batom1 batom2
+#dump 1b all local 10000 ${fname}/bonds.* c_bonds[*]
+
+
+###############################################
+############	INTEGRATION		#######
+###############################################
+thermo 1000
+thermo_style   custom   step  temp  epair vol cpu
+timestep 0.01
+
+###############################################
+############    FIXES                   #######
+###############################################
+fix 1 all   nve
+variable seed equal 12414
+fix 2 all   langevin   1.0 1.0   1.0  ${seed}
+
+##################
+## SHORT RE-EQ
+###################
+run 1000
+reset_timestep 0
+
+###############################################
+############    PAIRS   LJ              #######
+###############################################
+pair_style      lj/cut 2.5
+pair_modify     shift yes
+pair_coeff      * * 1.0 1.0 1.12246152962189
+
+run 20000
+
+##########################################
+############    FENE            ##########
+##########################################
+bond_style   fene
+special_bonds fene#<=== I M P O R T A N T (new command)
+bond_coeff   1  30.0   1.5  1.0   1.0
+
+
+run 1000 
+
+angle_coeff  1 1.0 #20 for realistic DNA (1 bead = 2.5 nm)
+
+run 10000 
+
+##############
+#LIGATE
+#############
+###IMPORTANT FOR LIGATION!!
+group ends2 type 2
+variable seedprob equal 56527
+fix ligation2 ends2 bond/create ${bfreq} 2 2 ${Rmin} 1 iparam 2 1 jparam 2 1 prob ${bprob} ${seedprob} atype 1 
+
+group ends3 type 3
+variable seedprobs equal 33587
+fix ligation3 ends3 bond/create ${bfreq} 3 3 ${Rmin} 1 iparam 2 1 jparam 2 1 prob ${bprob} ${seedprobs} atype 1
+
+group ends4 type 4
+variable seedprobs equal 23358
+fix ligation4 ends bond/create ${bfreq} 4 4 ${Rmin} 1 iparam 2 1 jparam 2 1 prob ${bprob} ${seedprobs} atype 1
+
+######################
+#### CUSTOM INFO #####
+######################
+thermo 10000
+###IMPORTANT FOR LIGATION!!
+thermo_style   custom step  temp  epair ebond eangle vol cpu f_ligation2[1] f_ligation2[2]
+thermo_style   custom step  temp  epair ebond eangle vol cpu f_ligation3[1] f_ligation3[2]
+thermo_style   custom step  temp  epair ebond eangle vol cpu f_ligation4[1] f_ligation4[2]
+
+
+###############################################
+############    DUMP        ###############
+###############################################
+####DUMP DAT
+undump 1
+undump 2
+dump   1   all   custom   100000   ${fname}.l${box}n${polymers}m${length}t${type}/${simname}.*  id mol type x y z  ix iy iz
+dump_modify 1 sort id
+####DUMP VMD
+dump 2 all custom 100000 ${fname}.trajectories/${simname}2.l${box}n${polymers}m${length}t${type}.lammpstrj id mol type x y z ix iy iz
+
+## DUMP bonds
+group ends2 type 2
+compute bonds2 ends2 property/local btype batom1 batom2
+#compute bonds ends4 property/local btype batom1 batom2
+dump 1b all local 10000 ${fname}.l${box}n${polymers}m${length}t${type}/bonds2.* c_bonds2[*]
+group ends3 type 3
+compute bonds3 ends3 property/local btype batom1 batom2
+dump 1c all local 10000 ${fname}.l${box}n${polymers}m${length}t${type}/bonds3.* c_bonds3[*]
+group ends4 type 4
+dump 1d all local 10000 ${fname}.l${box}n${polymers}m${length}t${type}/bonds4.* c_bonds4[*]
+
+##################
+## RUN
+###################
+run 5000000
+

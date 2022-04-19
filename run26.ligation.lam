@@ -1,0 +1,310 @@
+##############################################
+############	BOX		###############
+###############################################
+units lj
+atom_style angle #with stiffness
+boundary        p p p
+
+neighbor 1.6 bin
+neigh_modify every 2 delay 2 check yes
+
+#include parameters.dat
+#changed from include to read_data, file name is temporary to avoid previous PATH issues
+
+
+variable Rmin  equal 1.12246152962189
+variable bfreq equal 1
+variable bprob equal 1
+
+###############################################
+############	FILES		###############
+###############################################
+
+###IMPORTANT FOR LIGATION!!
+#The start configuration is made of linear chains whose ends are type 2
+variable polymers equal 100
+variable box equal 30   
+variable length equal 50
+variable type equal 26
+variable restartname index ../EQUIL/melt.l${box}n${polymers}m${length}t${type}.equilibrated.data 
+variable simname index melt.linear
+
+variable fname index dump
+shell mkdir ${fname}.l${box}n${polymers}m${length}t${type}
+shell mkdir ${fname}.trajectories
+restart 1000 ${fname}.l${box}n${polymers}m${length}t${type}/Restart.${simname}
+
+###IMPORTANT FOR LIGATION!!
+read_data INIT/melt.ring.l${box}n${polymers}m${length}t${type}.0 extra/bond/per/atom 3 extra/angle/per/atom 6 extra/special/per/atom 6
+
+reset_timestep 0
+
+###############################################
+############	ANGLE		###############
+###############################################
+angle_style   cosine
+angle_coeff  1 5.0 #20 for realistic DNA (1 bead = 2.5 nm)
+
+####################################
+####    PAIR INTERACTIONS    #######
+####################################
+pair_style  soft 1.12246
+pair_coeff      * * 100.0 1.12246
+
+####################################
+####    BONDS                #######
+####################################
+bond_style harmonic
+bond_coeff 1 200.0 1.1
+
+
+###############################################
+############    DUMP        ###############
+###############################################
+####DUMP DAT
+dump   1   all   custom   100000   ${fname}.l${box}n${polymers}m${length}t${type}/${simname}.*  id mol type x y z  ix iy iz
+dump_modify 1 sort id
+####DUMP VMD
+dump 2 all custom 100000 ${fname}.trajectories/${simname}.l${box}n${polymers}m${length}t${type}.lammpstrj id mol type x y z ix iy iz
+
+## DUMP bonds
+#compute bonds all property/local btype batom1 batom2
+#dump 1b all local 10000 ${fname}/bonds.* c_bonds[*]
+
+
+###############################################
+############	INTEGRATION		#######
+###############################################
+thermo 1000
+thermo_style   custom   step  temp  epair vol cpu
+timestep 0.01
+
+###############################################
+############    FIXES                   #######
+###############################################
+fix 1 all   nve
+variable seed equal 32681
+fix 2 all   langevin   1.0 1.0   1.0  ${seed}
+
+##################
+## SHORT RE-EQ
+###################
+run 4000
+reset_timestep 0
+
+###############################################
+############    PAIRS   LJ              #######
+###############################################
+pair_style      lj/cut 2.5
+pair_modify     shift yes
+pair_coeff      * * 1.0 1.0 1.12246152962189
+
+run 140000
+
+##########################################
+############    FENE            ##########
+##########################################
+bond_style   fene
+special_bonds fene#<=== I M P O R T A N T (new command)
+bond_coeff   1  30.0   1.5  1.0   1.0
+
+
+run 1000 
+
+angle_coeff  1 1.0 #20 for realistic DNA (1 bead = 2.5 nm)
+
+run 10000 
+
+##############
+#LIGATE
+#############
+###IMPORTANT FOR LIGATION!!
+group ends2 type 2
+variable seedprob equal 45982
+fix ligation2 ends2 bond/create ${bfreq} 2 2 ${Rmin} 1 iparam 2 1 jparam 2 1 prob ${bprob} ${seedprob} atype 1
+group ends3 type 3
+variable seedprob equal 50841
+fix ligation3 ends3 bond/create ${bfreq} 3 3 ${Rmin} 1 iparam 2 1 jparam 2 1 prob ${bprob} ${seedprob} atype 1
+group ends4 type 4
+variable seedprob equal 38917
+fix ligation4 ends4 bond/create ${bfreq} 4 4 ${Rmin} 1 iparam 2 1 jparam 2 1 prob ${bprob} ${seedprob} atype 1
+group ends5 type 5
+variable seedprob equal 23849
+fix ligation5 ends5 bond/create ${bfreq} 5 5 ${Rmin} 1 iparam 2 1 jparam 2 1 prob ${bprob} ${seedprob} atype 1
+group ends6 type 6
+variable seedprob equal 59842
+fix ligation6 ends6 bond/create ${bfreq} 6 6 ${Rmin} 1 iparam 2 1 jparam 2 1 prob ${bprob} ${seedprob} atype 1
+group ends7 type 7
+variable seedprob equal 63563
+fix ligation7 ends7 bond/create ${bfreq} 7 7 ${Rmin} 1 iparam 2 1 jparam 2 1 prob ${bprob} ${seedprob} atype 1
+group ends8 type 8
+variable seedprob equal 32897
+fix ligation8 ends8 bond/create ${bfreq} 8 8 ${Rmin} 1 iparam 2 1 jparam 2 1 prob ${bprob} ${seedprob} atype 1
+group ends9 type 9
+variable seedprob equal 23239
+fix ligation9 ends9 bond/create ${bfreq} 9 9 ${Rmin} 1 iparam 2 1 jparam 2 1 prob ${bprob} ${seedprob} atype 1
+group ends10 type 10
+variable seedprob equal 43289
+fix ligation10 ends10 bond/create ${bfreq} 10 10 ${Rmin} 1 iparam 2 1 jparam 2 1 prob ${bprob} ${seedprob} atype 1
+group ends11 type 11
+variable seedprob equal 32428
+fix ligation11 ends11 bond/create ${bfreq} 11 11 ${Rmin} 1 iparam 2 1 jparam 2 1 prob ${bprob} ${seedprob} atype 1
+group ends12 type 12
+variable seedprob equal 69042
+fix ligation12 ends12 bond/create ${bfreq} 12 12 ${Rmin} 1 iparam 2 1 jparam 2 1 prob ${bprob} ${seedprob} atype 1
+group ends13 type 13
+variable seedprob equal 25432
+fix ligation13 ends13 bond/create ${bfreq} 13 13 ${Rmin} 1 iparam 2 1 jparam 2 1 prob ${bprob} ${seedprob} atype 1
+group ends14 type 14
+variable seedprob equal 76041
+fix ligation14 ends14 bond/create ${bfreq} 14 14 ${Rmin} 1 iparam 2 1 jparam 2 1 prob ${bprob} ${seedprob} atype 1
+group ends15 type 15
+variable seedprob equal 54349
+fix ligation15 ends15 bond/create ${bfreq} 15 15 ${Rmin} 1 iparam 2 1 jparam 2 1 prob ${bprob} ${seedprob} atype 1
+group ends16 type 16
+variable seedprob equal 10892
+fix ligation16 ends16 bond/create ${bfreq} 16 16 ${Rmin} 1 iparam 2 1 jparam 2 1 prob ${bprob} ${seedprob} atype 1
+group ends17 type 17
+variable seedprob equal 45984
+fix ligation17 ends17 bond/create ${bfreq} 17 17 ${Rmin} 1 iparam 2 1 jparam 2 1 prob ${bprob} ${seedprob} atype 1
+group ends18 type 18
+variable seedprob equal 17009
+fix ligation18 ends18 bond/create ${bfreq} 18 18 ${Rmin} 1 iparam 2 1 jparam 2 1 prob ${bprob} ${seedprob} atype 1
+group ends19 type 19
+variable seedprob equal 54983
+fix ligation19 ends19 bond/create ${bfreq} 19 19 ${Rmin} 1 iparam 2 1 jparam 2 1 prob ${bprob} ${seedprob} atype 1
+group ends20 type 20
+variable seedprob equal 43983
+fix ligation20 ends20 bond/create ${bfreq} 20 20 ${Rmin} 1 iparam 2 1 jparam 2 1 prob ${bprob} ${seedprob} atype 1
+group ends21 type 21
+variable seedprob equal 34093
+fix ligation21 ends21 bond/create ${bfreq} 21 21 ${Rmin} 1 iparam 2 1 jparam 2 1 prob ${bprob} ${seedprob} atype 1
+group ends22 type 22
+variable seedprob equal 57890
+fix ligation22 ends22 bond/create ${bfreq} 22 22 ${Rmin} 1 iparam 2 1 jparam 2 1 prob ${bprob} ${seedprob} atype 1
+group ends23 type 23
+variable seedprob equal 17986
+fix ligation23 ends23 bond/create ${bfreq} 23 23 ${Rmin} 1 iparam 2 1 jparam 2 1 prob ${bprob} ${seedprob} atype 1
+group ends24 type 24
+variable seedprob equal 14801
+fix ligation24 ends24 bond/create ${bfreq} 24 24 ${Rmin} 1 iparam 2 1 jparam 2 1 prob ${bprob} ${seedprob} atype 1
+group ends25 type 25
+variable seedprob equal 30268
+fix ligation25 ends25 bond/create ${bfreq} 25 25 ${Rmin} 1 iparam 2 1 jparam 2 1 prob ${bprob} ${seedprob} atype 1
+group ends26 type 26
+variable seedprob equal 11040
+fix ligation26 ends26 bond/create ${bfreq} 26 26 ${Rmin} 1 iparam 2 1 jparam 2 1 prob ${bprob} ${seedprob} atype 1
+
+######################
+#### CUSTOM INFO #####
+######################
+
+thermo 10000
+###IMPORTANT FOR LIGATION!!
+thermo_style   custom step  temp  epair ebond eangle vol cpu f_ligation2[1] f_ligation2[2] f_ligation3[1] f_ligation3[2] f_ligation4[1] f_ligation4[2] f_ligation5[1] f_ligation5[2] f_ligation6[1] f_ligation6[2] f_ligation7[1] f_ligation7[2] f_ligation8[1] f_ligation8[2] f_ligation9[1] f_ligation9[2] f_ligation10[1] f_ligation10[2] f_ligation11[1] f_ligation11[2] f_ligation12[1] f_ligation12[2] f_ligation13[1] f_ligation13[2] f_ligation14[1] f_ligation14[2] f_ligation15[1] f_ligation15[2] f_ligation16[1] f_ligation16[2] f_ligation17[1] f_ligation17[2] f_ligation18[1] f_ligation18[2] f_ligation19[1] f_ligation19[2] f_ligation20[1] f_ligation20[2] f_ligation21[1] f_ligation21[2] f_ligation22[1] f_ligation22[2] f_ligation23[1] f_ligation23[2] f_ligation24[1] f_ligation24[2] f_ligation25[1] f_ligation25[2] f_ligation26[1] f_ligation26[2]
+
+
+
+###############################################
+############    DUMP        ###############
+###############################################
+####DUMP DAT
+undump 1
+undump 2
+dump   1   all   custom   100000   ${fname}.l${box}n${polymers}m${length}t${type}/${simname}.*  id mol type x y z  ix iy iz
+dump_modify 1 sort id
+####DUMP VMD
+dump 2 all custom 100000 ${fname}.trajectories/${simname}2.l${box}n${polymers}m${length}t${type}.lammpstrj id mol type x y z ix iy iz
+
+## DUMP bonds
+
+
+group ends2 type 2
+compute bonds2 ends2 property/local btype batom1 batom2
+dump 102 all local 10000 ${fname}.l${box}n${polymers}m${length}t${type}/bonds2.* c_bonds2[*]
+group ends3 type 3
+compute bonds3 ends3 property/local btype batom1 batom2
+dump 103 all local 10000 ${fname}.l${box}n${polymers}m${length}t${type}/bonds3.* c_bonds3[*]
+group ends4 type 4
+compute bonds4 ends4 property/local btype batom1 batom2
+dump 104 all local 10000 ${fname}.l${box}n${polymers}m${length}t${type}/bonds4.* c_bonds4[*]
+group ends5 type 5
+compute bonds5 ends5 property/local btype batom1 batom2
+dump 105 all local 10000 ${fname}.l${box}n${polymers}m${length}t${type}/bonds5.* c_bonds5[*]
+group ends6 type 6
+compute bonds6 ends6 property/local btype batom1 batom2
+dump 106 all local 10000 ${fname}.l${box}n${polymers}m${length}t${type}/bonds6.* c_bonds6[*]
+group ends7 type 7
+compute bonds7 ends7 property/local btype batom1 batom2
+dump 107 all local 10000 ${fname}.l${box}n${polymers}m${length}t${type}/bonds7.* c_bonds7[*]
+group ends8 type 8
+compute bonds8 ends8 property/local btype batom1 batom2
+dump 108 all local 10000 ${fname}.l${box}n${polymers}m${length}t${type}/bonds8.* c_bonds8[*]
+group ends9 type 9
+compute bonds9 ends9 property/local btype batom1 batom2
+dump 109 all local 10000 ${fname}.l${box}n${polymers}m${length}t${type}/bonds9.* c_bonds9[*]
+group ends10 type 10
+compute bonds10 ends10 property/local btype batom1 batom2
+dump 110 all local 10000 ${fname}.l${box}n${polymers}m${length}t${type}/bonds10.* c_bonds10[*]
+group ends11 type 11
+compute bonds11 ends11 property/local btype batom1 batom2
+dump 111 all local 10000 ${fname}.l${box}n${polymers}m${length}t${type}/bonds11.* c_bonds11[*]
+group ends12 type 12
+compute bonds12 ends12 property/local btype batom1 batom2
+dump 112 all local 10000 ${fname}.l${box}n${polymers}m${length}t${type}/bonds12.* c_bonds12[*]
+group ends13 type 13
+compute bonds13 ends13 property/local btype batom1 batom2
+dump 113 all local 10000 ${fname}.l${box}n${polymers}m${length}t${type}/bonds13.* c_bonds13[*]
+group ends14 type 14
+compute bonds14 ends14 property/local btype batom1 batom2
+dump 114 all local 10000 ${fname}.l${box}n${polymers}m${length}t${type}/bonds14.* c_bonds14[*]
+group ends15 type 15
+compute bonds15 ends15 property/local btype batom1 batom2
+dump 115 all local 10000 ${fname}.l${box}n${polymers}m${length}t${type}/bonds15.* c_bonds15[*]
+group ends16 type 16
+compute bonds16 ends16 property/local btype batom1 batom2
+dump 116 all local 10000 ${fname}.l${box}n${polymers}m${length}t${type}/bonds16.* c_bonds16[*]
+group ends17 type 17
+compute bonds17 ends17 property/local btype batom1 batom2
+dump 117 all local 10000 ${fname}.l${box}n${polymers}m${length}t${type}/bonds17.* c_bonds17[*]
+group ends18 type 18
+compute bonds18 ends18 property/local btype batom1 batom2
+dump 118 all local 10000 ${fname}.l${box}n${polymers}m${length}t${type}/bonds18.* c_bonds18[*]
+group ends19 type 19
+compute bonds19 ends19 property/local btype batom1 batom2
+dump 119 all local 10000 ${fname}.l${box}n${polymers}m${length}t${type}/bonds19.* c_bonds19[*]
+group ends20 type 20
+compute bonds20 ends20 property/local btype batom1 batom2
+dump 120 all local 10000 ${fname}.l${box}n${polymers}m${length}t${type}/bonds20.* c_bonds20[*]
+group ends21 type 21
+compute bonds21 ends21 property/local btype batom1 batom2
+dump 121 all local 10000 ${fname}.l${box}n${polymers}m${length}t${type}/bonds21.* c_bonds21[*]
+group ends22 type 22
+compute bonds22 ends22 property/local btype batom1 batom2
+dump 122 all local 10000 ${fname}.l${box}n${polymers}m${length}t${type}/bonds22.* c_bonds22[*]
+group ends23 type 23
+compute bonds23 ends23 property/local btype batom1 batom2
+dump 123 all local 10000 ${fname}.l${box}n${polymers}m${length}t${type}/bonds23.* c_bonds23[*]
+group ends24 type 24
+compute bonds24 ends24 property/local btype batom1 batom2
+dump 124 all local 10000 ${fname}.l${box}n${polymers}m${length}t${type}/bonds24.* c_bonds24[*]
+group ends25 type 25
+compute bonds25 ends25 property/local btype batom1 batom2
+dump 125 all local 10000 ${fname}.l${box}n${polymers}m${length}t${type}/bonds25.* c_bonds25[*]
+group ends26 type 26
+compute bonds26 ends26 property/local btype batom1 batom2
+dump 126 all local 10000 ${fname}.l${box}n${polymers}m${length}t${type}/bonds26.* c_bonds26[*]
+
+
+
+
+
+
+
+##################
+## RUNgroup ends5 type 5
+#variable seedprobs equal 72454
+#fix ligation ends5 bond/create ${bfreq} 5 5 ${Rmin} 1 iparam 2 1 jparam 2 1 prob ${bprob} ${seedprobs} atype 1
+###################
+run 5000000
+
